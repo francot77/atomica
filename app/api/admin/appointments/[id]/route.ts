@@ -5,10 +5,8 @@ import { Appointment } from '@/lib/models/Appointment';
 import { Service } from '@/lib/models/Service';
 import { buildWhatsAppMessage, normalizePhone } from '@/lib/whatsapp';
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   await dbConnect();
 
   const id = params.id;

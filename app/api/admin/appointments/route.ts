@@ -8,18 +8,29 @@ export async function GET(req: NextRequest) {
   await dbConnect();
 
   const { searchParams } = new URL(req.url);
-  const date = searchParams.get('date') || '';
+  const date = searchParams.get('date');
+  const from = searchParams.get('from');
+  const to = searchParams.get('to');
   const status = searchParams.get('status') || 'request'; // por defecto pendientes
 
   const query: any = {};
-  if (date) query.date = date;
-  if (status !== 'all') query.status = status;
+
+  if (from && to) {
+    // rango de fechas (semana)
+    query.date = { $gte: from, $lte: to };
+  } else if (date) {
+    // solo un día
+    query.date = date;
+  }
+
+  if (status !== 'all') {
+    query.status = status;
+  }
 
   const appointments = await Appointment.find(query)
     .sort({ date: 1, startTime: 1 })
     .lean();
 
-  // traer los servicios para mapear nombres
   const serviceIds = Array.from(
     new Set(appointments.map((a: any) => String(a.serviceId)))
   );

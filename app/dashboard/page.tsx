@@ -21,9 +21,38 @@ async function logout() {
   await fetch('/api/auth/logout', { method: 'POST' });
   window.location.href = '/login';
 }
+function getDayName(dateStr: string) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const days = [
+    'Domingo',
+    'Lunes',
+    'Martes',
+    'Miércoles',
+    'Jueves',
+    'Viernes',
+    'Sábado',
+  ];
+  return days[d.getDay()];
+}
+
+function getWeekRange(dateStr: string) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const day = d.getDay(); // 0 domingo, 1 lunes, ...
+  const diffToMonday = (day + 6) % 7; // lunes -> 0, domingo -> 6
+
+  const monday = new Date(d);
+  monday.setDate(d.getDate() - diffToMonday);
+
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+
+  const format = (dt: Date) => dt.toISOString().slice(0, 10);
+  return { from: format(monday), to: format(sunday) };
+}
 
 export default function DashboardPage() {
   const [date, setDate] = useState<string>('');
+  const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
   const [statusFilter, setStatusFilter] = useState<'request' | 'confirmed' | 'all'>('request');
   const [appointments, setAppointments] = useState<AdminAppointment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -42,7 +71,7 @@ export default function DashboardPage() {
     if (!date) return;
     loadAppointments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date, statusFilter]);
+  }, [date, statusFilter, viewMode]);
 
   async function loadAppointments() {
     setLoading(true);
@@ -50,9 +79,16 @@ export default function DashboardPage() {
 
     try {
       const params = new URLSearchParams({
-        date,
         status: statusFilter,
       });
+
+      if (viewMode === 'day' && date) {
+        params.set('date', date);
+      } else if (viewMode === 'week' && date) {
+        const { from, to } = getWeekRange(date);
+        params.set('from', from);
+        params.set('to', to);
+      }
 
       const res = await fetch(`/api/admin/appointments?${params.toString()}`);
       const json = await res.json();
@@ -61,7 +97,19 @@ export default function DashboardPage() {
         setError(json.error || 'Error cargando turnos');
         setAppointments([]);
       } else {
-        setAppointments(json.appointments || []);
+        let appts: AdminAppointment[] = json.appointments || [];
+
+        // 🔥 Filtrar turnos ya pasados de HOY (los que ya se trabajaron)
+        const now = new Date();
+        const todayStr = now.toISOString().slice(0, 10);
+
+        appts = appts.filter((a) => {
+          if (a.date !== todayStr) return true; // otros días se muestran completos
+          const end = new Date(`${a.date}T${a.endTime}:00`);
+          return end >= now; // solo mostramos los que todavía no terminaron
+        });
+
+        setAppointments(appts);
       }
     } catch (e) {
       console.error(e);
@@ -131,6 +179,13 @@ export default function DashboardPage() {
     }
   }
 
+  // etiqueta de semana para mostrar arriba
+  let weekLabel = '';
+  if (viewMode === 'week' && date) {
+    const { from, to } = getWeekRange(date);
+    weekLabel = `Semana del ${from} al ${to}`;
+  }
+
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 flex justify-center p-4">
       <div className="w-full max-w-5xl space-y-4">
@@ -138,18 +193,16 @@ export default function DashboardPage() {
         <header className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">
-              <span
-                style={{
-                  color: PINK,
-                }}
-              >
-                Agenda
-              </span>{' '}
-              de turnos
+              <span style={{ color: PINK }}>Agenda</span> de turnos
             </h1>
             <p className="text-xs text-slate-400 mt-1">
-              Ver y gestionar las solicitudes del día.
+              Ver y gestionar las solicitudes.
             </p>
+            {viewMode === 'week' && weekLabel && (
+              <p className="text-[11px] text-slate-500 mt-1">
+                {weekLabel}
+              </p>
+            )}
           </div>
           <button
             onClick={logout}
@@ -162,13 +215,40 @@ export default function DashboardPage() {
         {/* Filtros */}
         <section className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-slate-400">Fecha</label>
+            <label className="text-xs text-slate-400">Fecha base</label>
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
               className="bg-slate-950 border border-slate-700 text-sm rounded-md px-2 py-1"
             />
+            <span className="text-[10px] text-slate-500">
+              En modo semana se usa para calcular la semana.
+            </span>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-slate-400">Vista</span>
+            <div className="inline-flex rounded-md border border-slate-700 overflow-hidden">
+              <button
+                onClick={() => setViewMode('day')}
+                className={`px-3 py-1 text-xs ${viewMode === 'day'
+                    ? 'bg-slate-100 text-slate-900'
+                    : 'bg-slate-900 text-slate-300'
+                  }`}
+              >
+                Día
+              </button>
+              <button
+                onClick={() => setViewMode('week')}
+                className={`px-3 py-1 text-xs ${viewMode === 'week'
+                    ? 'bg-slate-100 text-slate-900'
+                    : 'bg-slate-900 text-slate-300'
+                  }`}
+              >
+                Semana
+              </button>
+            </div>
           </div>
 
           <div className="flex flex-col gap-1">
@@ -176,31 +256,28 @@ export default function DashboardPage() {
             <div className="inline-flex rounded-md border border-slate-700 overflow-hidden">
               <button
                 onClick={() => setStatusFilter('request')}
-                className={`px-3 py-1 text-xs ${
-                  statusFilter === 'request'
+                className={`px-3 py-1 text-xs ${statusFilter === 'request'
                     ? 'bg-slate-100 text-slate-900'
                     : 'bg-slate-900 text-slate-300'
-                }`}
+                  }`}
               >
                 Pendientes
               </button>
               <button
                 onClick={() => setStatusFilter('confirmed')}
-                className={`px-3 py-1 text-xs ${
-                  statusFilter === 'confirmed'
+                className={`px-3 py-1 text-xs ${statusFilter === 'confirmed'
                     ? 'bg-slate-100 text-slate-900'
                     : 'bg-slate-900 text-slate-300'
-                }`}
+                  }`}
               >
                 Confirmados
               </button>
               <button
                 onClick={() => setStatusFilter('all')}
-                className={`px-3 py-1 text-xs ${
-                  statusFilter === 'all'
+                className={`px-3 py-1 text-xs ${statusFilter === 'all'
                     ? 'bg-slate-100 text-slate-900'
                     : 'bg-slate-900 text-slate-300'
-                }`}
+                  }`}
               >
                 Todos
               </button>
@@ -219,9 +296,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {error && (
-            <p className="text-xs text-red-400">{error}</p>
-          )}
+          {error && <p className="text-xs text-red-400">{error}</p>}
 
           {!loading && appointments.length === 0 && !error && (
             <p className="text-xs text-slate-400">
@@ -238,7 +313,10 @@ export default function DashboardPage() {
                 )} bg-slate-950 rounded-lg px-3 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2`}
               >
                 <div className="flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[11px] text-slate-400">
+                      {a.date} · {getDayName(a.date)}
+                    </span>
                     <span
                       className="text-sm font-semibold"
                       style={{ color: PINK }}
@@ -257,10 +335,7 @@ export default function DashboardPage() {
                     {a.clientPhone && (
                       <>
                         {' '}
-                        ·{' '}
-                        <span>
-                          {a.clientPhone}
-                        </span>
+                        · <span>{a.clientPhone}</span>
                       </>
                     )}
                   </div>
@@ -271,7 +346,6 @@ export default function DashboardPage() {
                   )}
                 </div>
 
-                {/* Acciones */}
                 {a.status === 'request' && (
                   <div className="flex flex-row gap-2 justify-end">
                     <button
@@ -279,7 +353,7 @@ export default function DashboardPage() {
                       className="text-xs px-3 py-1 rounded-md"
                       style={{
                         backgroundColor: PINK,
-                        color: '#0f172a', // slate-900
+                        color: '#0f172a',
                       }}
                     >
                       Confirmar + WhatsApp
