@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useEffect, useState } from 'react';
 import { AdminAppointment, PINK } from './types';
-
+import Link from 'next/link';
 function getWeekRange(dateStr: string) {
   const d = new Date(dateStr + 'T00:00:00');
   const day = d.getDay(); // 0 domingo, 1 lunes, ...
@@ -118,6 +118,36 @@ export default function AppointmentsTab() {
     loadSummary();
   }, []);
 
+  async function handleReminder(appt: AdminAppointment) {
+    const ok = window.confirm(
+      `¿Enviar recordatorio por WhatsApp a ${appt.clientName} para el turno del ${appt.date} a las ${appt.startTime}?`
+    );
+    if (!ok) return;
+
+    try {
+      const res = await fetch(`/api/admin/appointments/${appt.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'remind' }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        alert(json.error || 'Error enviando recordatorio');
+        return;
+      }
+
+      if (json.waUrl) {
+        window.open(json.waUrl, '_blank');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error enviando recordatorio');
+    }
+  }
+
+
   async function loadAppointments() {
     setLoadingAppointments(true);
     setErrorAppointments(null);
@@ -221,11 +251,20 @@ export default function AppointmentsTab() {
   }
 
   async function handleAction(
-    id: string,
+    appt: AdminAppointment,
     action: 'confirm' | 'reject'
   ) {
+    const label =
+      action === 'confirm' ? 'confirmar' : 'rechazar';
+
+    const ok = window.confirm(
+      `¿Seguro que querés ${label} el turno de ${appt.clientName} el ${appt.date} a las ${appt.startTime}?`
+    );
+
+    if (!ok) return;
+
     try {
-      const res = await fetch(`/api/admin/appointments/${id}`, {
+      const res = await fetch(`/api/admin/appointments/${appt.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action }),
@@ -238,21 +277,24 @@ export default function AppointmentsTab() {
         return;
       }
 
+      // abre WhatsApp con el mensaje
       window.open(json.waUrl, '_blank');
 
+      // actualiza estado en la lista
       setAppointments((prev) =>
         prev.map((a) =>
-          a.id === id ? { ...a, status: json.status } : a
+          a.id === appt.id ? { ...a, status: json.status } : a
         )
       );
 
-      // refrescar resumen por si cambió algo
+      // refresca resumen hoy/mañana si lo estás usando
       loadSummary();
     } catch (e) {
       console.error(e);
       alert('Error actualizando el turno');
     }
   }
+
 
   let weekLabel = '';
   if (viewMode === 'week' && date) {
@@ -307,22 +349,32 @@ export default function AppointmentsTab() {
                   {summary.today.map((a) => (
                     <li
                       key={a.id}
-                      className="text-[11px] text-slate-200 flex justify-between gap-2"
+                      className="text-[11px] text-slate-200 flex items-center gap-2"
                     >
-                      <span>
-                        <span
-                          className="font-semibold"
-                          style={{ color: PINK }}
-                        >
-                          {a.startTime}
-                        </span>{' '}
-                        · {a.clientName}
-                      </span>
-                      <span className="text-slate-400 truncate max-w-[120px] text-right">
-                        {a.serviceName}
-                      </span>
+                      <div className="flex-1 min-w-0">
+                        <span>
+                          <span
+                            className="font-semibold"
+                            style={{ color: PINK }}
+                          >
+                            {a.startTime}
+                          </span>{' '}
+                          · {a.clientName}
+                        </span>
+                        <span className="block text-slate-400 truncate max-w-[160px]">
+                          {a.serviceName}
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={() => handleReminder(a)}
+                        className="text-[10px] px-2 py-1 rounded-full border border-pink-500 text-pink-300 hover:bg-pink-500/10 whitespace-nowrap"
+                      >
+                        Recordatorio
+                      </button>
                     </li>
                   ))}
+
                 </ul>
               )}
             </div>
@@ -351,22 +403,32 @@ export default function AppointmentsTab() {
                   {summary.tomorrow.map((a) => (
                     <li
                       key={a.id}
-                      className="text-[11px] text-slate-200 flex justify-between gap-2"
+                      className="text-[11px] text-slate-200 flex items-center gap-2"
                     >
-                      <span>
-                        <span
-                          className="font-semibold"
-                          style={{ color: PINK }}
-                        >
-                          {a.startTime}
-                        </span>{' '}
-                        · {a.clientName}
-                      </span>
-                      <span className="text-slate-400 truncate max-w-[120px] text-right">
-                        {a.serviceName}
-                      </span>
+                      <div className="flex-1 min-w-0">
+                        <span>
+                          <span
+                            className="font-semibold"
+                            style={{ color: PINK }}
+                          >
+                            {a.startTime}
+                          </span>{' '}
+                          · {a.clientName}
+                        </span>
+                        <span className="block text-slate-400 truncate max-w-[160px]">
+                          {a.serviceName}
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={() => handleReminder(a)}
+                        className="text-[10px] px-2 py-1 rounded-full border border-pink-500 text-pink-300 hover:bg-pink-500/10 whitespace-nowrap"
+                      >
+                        Recordatorio
+                      </button>
                     </li>
                   ))}
+
                 </ul>
               )}
             </div>
@@ -396,21 +458,19 @@ export default function AppointmentsTab() {
           <div className="inline-flex rounded-md border border-slate-700 overflow-hidden w-fit">
             <button
               onClick={() => setViewMode('day')}
-              className={`px-3 py-1 text-xs ${
-                viewMode === 'day'
-                  ? 'bg-slate-100 text-slate-900'
-                  : 'bg-slate-900 text-slate-300'
-              }`}
+              className={`px-3 py-1 text-xs ${viewMode === 'day'
+                ? 'bg-slate-100 text-slate-900'
+                : 'bg-slate-900 text-slate-300'
+                }`}
             >
               Día
             </button>
             <button
               onClick={() => setViewMode('week')}
-              className={`px-3 py-1 text-xs ${
-                viewMode === 'week'
-                  ? 'bg-slate-100 text-slate-900'
-                  : 'bg-slate-900 text-slate-300'
-              }`}
+              className={`px-3 py-1 text-xs ${viewMode === 'week'
+                ? 'bg-slate-100 text-slate-900'
+                : 'bg-slate-900 text-slate-300'
+                }`}
             >
               Semana
             </button>
@@ -427,31 +487,28 @@ export default function AppointmentsTab() {
           <div className="inline-flex rounded-md border border-slate-700 overflow-hidden w-fit">
             <button
               onClick={() => setStatusFilter('request')}
-              className={`px-3 py-1 text-xs ${
-                statusFilter === 'request'
-                  ? 'bg-slate-100 text-slate-900'
-                  : 'bg-slate-900 text-slate-300'
-              }`}
+              className={`px-3 py-1 text-xs ${statusFilter === 'request'
+                ? 'bg-slate-100 text-slate-900'
+                : 'bg-slate-900 text-slate-300'
+                }`}
             >
               Pendientes
             </button>
             <button
               onClick={() => setStatusFilter('confirmed')}
-              className={`px-3 py-1 text-xs ${
-                statusFilter === 'confirmed'
-                  ? 'bg-slate-100 text-slate-900'
-                  : 'bg-slate-900 text-slate-300'
-              }`}
+              className={`px-3 py-1 text-xs ${statusFilter === 'confirmed'
+                ? 'bg-slate-100 text-slate-900'
+                : 'bg-slate-900 text-slate-300'
+                }`}
             >
               Confirmados
             </button>
             <button
               onClick={() => setStatusFilter('all')}
-              className={`px-3 py-1 text-xs ${
-                statusFilter === 'all'
-                  ? 'bg-slate-100 text-slate-900'
-                  : 'bg-slate-900 text-slate-300'
-              }`}
+              className={`px-3 py-1 text-xs ${statusFilter === 'all'
+                ? 'bg-slate-100 text-slate-900'
+                : 'bg-slate-900 text-slate-300'
+                }`}
             >
               Todos
             </button>
@@ -506,13 +563,12 @@ export default function AppointmentsTab() {
                     {a.clientName}
                   </span>
                   <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full ${
-                      a.status === 'request'
-                        ? 'bg-pink-500/20 text-pink-300'
-                        : a.status === 'confirmed'
+                    className={`text-[10px] px-2 py-0.5 rounded-full ${a.status === 'request'
+                      ? 'bg-pink-500/20 text-pink-300'
+                      : a.status === 'confirmed'
                         ? 'bg-emerald-500/20 text-emerald-300'
                         : 'bg-red-700/50 text-slate-200'
-                    }`}
+                      }`}
                   >
                     {statusLabel(a.status)}
                   </span>
@@ -531,12 +587,20 @@ export default function AppointmentsTab() {
                     {a.notes}
                   </p>
                 )}
+                <div className="mt-1">
+                  <Link
+                    href={`/dashboard/appointments/${a.id}`}
+                    className="text-[11px] text-slate-400 hover:text-slate-200 underline underline-offset-2"
+                  >
+                    Ver detalle
+                  </Link>
+                </div>
               </div>
 
               {a.status === 'request' && (
                 <div className="flex flex-row gap-2 justify-end">
                   <button
-                    onClick={() => handleAction(a.id, 'confirm')}
+                    onClick={() => handleAction(a, 'confirm')}
                     className="text-xs px-3 py-1 rounded-md"
                     style={{
                       backgroundColor: PINK,
@@ -546,7 +610,7 @@ export default function AppointmentsTab() {
                     Confirmar + WhatsApp
                   </button>
                   <button
-                    onClick={() => handleAction(a.id, 'reject')}
+                    onClick={() => handleAction(a, 'reject')}
                     className="text-xs px-3 py-1 rounded-md border border-slate-600 text-slate-100 hover:bg-slate-800"
                   >
                     Rechazar

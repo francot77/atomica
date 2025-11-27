@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState } from 'react'
+
 import { PINK } from './types';
 import AppointmentsTab from './AppointmentsTab';
 import ServicesTab from './ServicesTab';
