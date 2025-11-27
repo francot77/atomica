@@ -7,20 +7,20 @@ const PINK = '#e87dad';
 export default function Home() {
   return (
     <main className="relative min-h-screen text-slate-100">
-      {/* Fondo con imagen del estudio */}
+      
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: "url('/background.webp')", // cambiá esto por tu foto real
+          backgroundImage: "url('/background.webp')",
         }}
       />
 
       {/* Overlay negro transparente para contraste */}
       <div className="absolute inset-0 bg-black/70" />
 
-      {/* Contenido */}
+      
       <div className="relative z-10 min-h-screen flex flex-col px-4 py-6">
-        {/* Barra superior */}
+        
         <header className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <div
@@ -107,7 +107,6 @@ export default function Home() {
         <footer className="mt-4 text-[11px] text-slate-200/75 flex justify-between gap-2">
           <span>Atómica Nails · Reservá tu turno online</span>
           <a href='/dashboard'><span>Soy Atomica</span></a>
-          <span className="hidden sm:inline">Hecho a medida del estudio.</span>
         </footer>
       </div>
     </main>
