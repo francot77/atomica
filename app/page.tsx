@@ -106,6 +106,7 @@ export default function Home() {
         {/* Footer chiquito */}
         <footer className="mt-4 text-[11px] text-slate-200/75 flex justify-between gap-2">
           <span>Atómica Nails · Reservá tu turno online</span>
+          <a href='/dashboard'><span>Soy Atomica</span></a>
           <span className="hidden sm:inline">Hecho a medida del estudio.</span>
         </footer>
       </div>
