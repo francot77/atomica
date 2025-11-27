@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useEffect, useState } from 'react';
 import { AdminAppointment, PINK } from './types';
 
@@ -45,6 +46,37 @@ function statusLabel(status: AdminAppointment['status']) {
   }
 }
 
+function formatShortDate(dateStr: string) {
+  const [y, m, d] = dateStr.split('-');
+  return `${d}/${m}`;
+}
+
+function getTodayAndTomorrowStr() {
+  const now = new Date();
+  const today = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate()
+  );
+  const tomorrow = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() + 1
+  );
+
+  const toStr = (dt: Date) => {
+    const yyyy = dt.getFullYear();
+    const mm = String(dt.getMonth() + 1).padStart(2, '0');
+    const dd = String(dt.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  return {
+    todayStr: toStr(today),
+    tomorrowStr: toStr(tomorrow),
+  };
+}
+
 export default function AppointmentsTab() {
   const [date, setDate] = useState('');
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
@@ -57,20 +89,34 @@ export default function AppointmentsTab() {
     null
   );
 
-  // fecha de hoy
+  // resumen hoy/mañana
+  const [summary, setSummary] = useState<{
+    today: AdminAppointment[];
+    tomorrow: AdminAppointment[];
+  } | null>(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
+  const [errorSummary, setErrorSummary] = useState<string | null>(null);
+
+  // fecha de hoy para filtros
   useEffect(() => {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
     setDate(`${yyyy}-${mm}-${dd}`);
   }, []);
 
+  // cargar turnos según filtros
   useEffect(() => {
     if (!date) return;
     loadAppointments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, statusFilter, viewMode]);
+
+  // cargar resumen hoy / mañana una vez al montar
+  useEffect(() => {
+    loadSummary();
+  }, []);
 
   async function loadAppointments() {
     setLoadingAppointments(true);
@@ -119,6 +165,61 @@ export default function AppointmentsTab() {
     }
   }
 
+  async function loadSummary() {
+    setLoadingSummary(true);
+    setErrorSummary(null);
+
+    try {
+      const { todayStr, tomorrowStr } = getTodayAndTomorrowStr();
+
+      const [resToday, resTomorrow] = await Promise.all([
+        fetch(
+          `/api/admin/appointments?status=confirmed&date=${todayStr}`
+        ),
+        fetch(
+          `/api/admin/appointments?status=confirmed&date=${tomorrowStr}`
+        ),
+      ]);
+
+      const [jsonToday, jsonTomorrow] = await Promise.all([
+        resToday.json(),
+        resTomorrow.json(),
+      ]);
+
+      if (!resToday.ok) {
+        throw new Error(jsonToday.error || 'Error hoy');
+      }
+      if (!resTomorrow.ok) {
+        throw new Error(jsonTomorrow.error || 'Error mañana');
+      }
+
+      let todayAppts: AdminAppointment[] = jsonToday.appointments || [];
+      const tomorrowAppts: AdminAppointment[] =
+        jsonTomorrow.appointments || [];
+
+      // mismo filtro de "turnos pasados" para HOY
+      const now = new Date();
+      const todayIso = now.toISOString().slice(0, 10);
+
+      todayAppts = todayAppts.filter((a) => {
+        if (a.date !== todayIso) return true;
+        const end = new Date(`${a.date}T${a.endTime}:00`);
+        return end >= now;
+      });
+
+      setSummary({
+        today: todayAppts,
+        tomorrow: tomorrowAppts,
+      });
+    } catch (e) {
+      console.error(e);
+      setErrorSummary('Error cargando resumen de hoy/mañana');
+      setSummary(null);
+    } finally {
+      setLoadingSummary(false);
+    }
+  }
+
   async function handleAction(
     id: string,
     action: 'confirm' | 'reject'
@@ -144,6 +245,9 @@ export default function AppointmentsTab() {
           a.id === id ? { ...a, status: json.status } : a
         )
       );
+
+      // refrescar resumen por si cambió algo
+      loadSummary();
     } catch (e) {
       console.error(e);
       alert('Error actualizando el turno');
@@ -158,7 +262,119 @@ export default function AppointmentsTab() {
 
   return (
     <>
-      {/* Filtros */}
+      {/* RESUMEN HOY / MAÑANA */}
+      <section className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold">Resumen rápido</h2>
+          <button
+            onClick={loadSummary}
+            className="text-[11px] px-2 py-1 rounded-full border border-slate-700 hover:bg-slate-800"
+          >
+            Actualizar
+          </button>
+        </div>
+
+        {loadingSummary && (
+          <p className="text-xs text-slate-400">Cargando...</p>
+        )}
+        {errorSummary && (
+          <p className="text-xs text-red-400">{errorSummary}</p>
+        )}
+
+        {summary && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* HOY */}
+            <div className="bg-slate-950 border border-slate-800 rounded-lg p-2 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold">
+                  Hoy (
+                  {summary.today[0]
+                    ? formatShortDate(summary.today[0].date)
+                    : formatShortDate(getTodayAndTomorrowStr().todayStr)}
+                  )
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  {summary.today.length} turno
+                  {summary.today.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+              {summary.today.length === 0 ? (
+                <p className="text-[11px] text-slate-500">
+                  No hay turnos confirmados hoy.
+                </p>
+              ) : (
+                <ul className="space-y-1">
+                  {summary.today.map((a) => (
+                    <li
+                      key={a.id}
+                      className="text-[11px] text-slate-200 flex justify-between gap-2"
+                    >
+                      <span>
+                        <span
+                          className="font-semibold"
+                          style={{ color: PINK }}
+                        >
+                          {a.startTime}
+                        </span>{' '}
+                        · {a.clientName}
+                      </span>
+                      <span className="text-slate-400 truncate max-w-[120px] text-right">
+                        {a.serviceName}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* MAÑANA */}
+            <div className="bg-slate-950 border border-slate-800 rounded-lg p-2 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold">
+                  Mañana (
+                  {summary.tomorrow[0]
+                    ? formatShortDate(summary.tomorrow[0].date)
+                    : formatShortDate(getTodayAndTomorrowStr().tomorrowStr)}
+                  )
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  {summary.tomorrow.length} turno
+                  {summary.tomorrow.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+              {summary.tomorrow.length === 0 ? (
+                <p className="text-[11px] text-slate-500">
+                  No hay turnos confirmados mañana.
+                </p>
+              ) : (
+                <ul className="space-y-1">
+                  {summary.tomorrow.map((a) => (
+                    <li
+                      key={a.id}
+                      className="text-[11px] text-slate-200 flex justify-between gap-2"
+                    >
+                      <span>
+                        <span
+                          className="font-semibold"
+                          style={{ color: PINK }}
+                        >
+                          {a.startTime}
+                        </span>{' '}
+                        · {a.clientName}
+                      </span>
+                      <span className="text-slate-400 truncate max-w-[120px] text-right">
+                        {a.serviceName}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* FILTROS PRINCIPALES */}
       <section className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
           <label className="text-xs text-slate-400">
@@ -243,7 +459,7 @@ export default function AppointmentsTab() {
         </div>
       </section>
 
-      {/* Lista */}
+      {/* LISTA DE TURNOS */}
       <section className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold">Turnos</h2>
@@ -255,7 +471,9 @@ export default function AppointmentsTab() {
         </div>
 
         {errorAppointments && (
-          <p className="text-xs text-red-400">{errorAppointments}</p>
+          <p className="text-xs text-red-400">
+            {errorAppointments}
+          </p>
         )}
 
         {!loadingAppointments &&
