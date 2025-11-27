@@ -14,6 +14,8 @@ type DetailAppointment = {
   notes: string;
   serviceName: string;
   serviceColor: string;
+  reminderSent?: boolean;
+  lastReminderAt?: string | null;
 };
 
 const PINK = '#e87dad';

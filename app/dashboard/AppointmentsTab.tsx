@@ -352,28 +352,41 @@ export default function AppointmentsTab() {
                       className="text-[11px] text-slate-200 flex items-center gap-2"
                     >
                       <div className="flex-1 min-w-0">
-                        <span>
-                          <span
-                            className="font-semibold"
-                            style={{ color: PINK }}
-                          >
-                            {a.startTime}
-                          </span>{' '}
-                          · {a.clientName}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span>
+                            <span
+                              className="font-semibold"
+                              style={{ color: PINK }}
+                            >
+                              {a.startTime}
+                            </span>{' '}
+                            · {a.clientName}
+                          </span>
+                        </div>
+
                         <span className="block text-slate-400 truncate max-w-[160px]">
                           {a.serviceName}
                         </span>
                       </div>
 
-                      <button
+                      {!a.reminderSent ? <button
                         onClick={() => handleReminder(a)}
                         className="text-[10px] px-2 py-1 rounded-full border border-pink-500 text-pink-300 hover:bg-pink-500/10 whitespace-nowrap"
                       >
                         Recordatorio
-                      </button>
+                      </button> :
+                        <button
+                          onClick={() => handleReminder(a)}
+
+                        >
+                          <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/40">
+                            Recordatorio enviado
+                          </span>
+                        </button>
+                      }
                     </li>
                   ))}
+
 
                 </ul>
               )}
@@ -406,28 +419,39 @@ export default function AppointmentsTab() {
                       className="text-[11px] text-slate-200 flex items-center gap-2"
                     >
                       <div className="flex-1 min-w-0">
-                        <span>
-                          <span
-                            className="font-semibold"
-                            style={{ color: PINK }}
-                          >
-                            {a.startTime}
-                          </span>{' '}
-                          · {a.clientName}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span>
+                            <span
+                              className="font-semibold"
+                              style={{ color: PINK }}
+                            >
+                              {a.startTime}
+                            </span>{' '}
+                            · {a.clientName}
+                          </span>
+                        </div>
+
                         <span className="block text-slate-400 truncate max-w-[160px]">
                           {a.serviceName}
                         </span>
                       </div>
 
-                      <button
+                      {!a.reminderSent ? <button
                         onClick={() => handleReminder(a)}
                         className="text-[10px] px-2 py-1 rounded-full border border-pink-500 text-pink-300 hover:bg-pink-500/10 whitespace-nowrap"
                       >
                         Recordatorio
-                      </button>
+                      </button> : <button
+                          onClick={() => handleReminder(a)}
+
+                        >
+                          <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/40">
+                            Recordatorio enviado
+                          </span>
+                        </button>}
                     </li>
                   ))}
+
 
                 </ul>
               )}
@@ -607,7 +631,7 @@ export default function AppointmentsTab() {
                       color: '#0f172a',
                     }}
                   >
-                    Confirmar + WhatsApp
+                    Confirmar
                   </button>
                   <button
                     onClick={() => handleAction(a, 'reject')}

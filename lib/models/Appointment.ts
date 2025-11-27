@@ -14,6 +14,13 @@ const AppointmentSchema = new Schema(
       default: 'request',
     },
     notes: { type: String },
+     reminderSent: {
+    type: Boolean,
+    default: false,
+  },
+  lastReminderAt: {
+    type: Date,
+  }
   },
   { timestamps: true }
 );

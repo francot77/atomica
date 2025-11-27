@@ -81,6 +81,8 @@ export async function GET(_req: NextRequest, props: { params: Promise<{ id: stri
       serviceColor: (appt as any).serviceColor || '#e87dad',
       createdAt: appt.createdAt,
       updatedAt: appt.updatedAt,
+      reminderSent: appt.reminderSent || false,
+      lastReminderAt: appt.lastReminderAt || null,
     },
   });
 }
@@ -118,8 +120,14 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
   // enviar recordatorio MANUAL (no cambia estado)
   if (action === 'remind') {
     const waUrl = buildWhatsAppReminderUrl(appt);
+
+    // marcar como recordatorio enviado
+    appt.reminderSent = true;
+    appt.lastReminderAt = new Date();
+    await appt.save();
+
     return NextResponse.json(
-      { waUrl, status: appt.status },
+      { waUrl, status: appt.status, reminderSent: appt.reminderSent, lastReminderAt: appt.lastReminderAt },
       { status: 200 }
     );
   }

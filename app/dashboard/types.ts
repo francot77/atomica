@@ -12,6 +12,8 @@ export type AdminAppointment = {
   endTime: string;
   status: 'request' | 'confirmed' | 'cancelled' | 'rejected';
   notes: string;
+  reminderSent?: boolean;
+  lastReminderAt?: string | null;
 };
 
 export type AdminService = {
