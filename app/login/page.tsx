@@ -1,48 +1,23 @@
-'use client';
-
-import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import type { Metadata } from 'next';
 import Link from 'next/link';
+import LoginForm from './LoginForm';
 
 const PINK = '#e87dad';
 
-export default function LoginPage() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const searchParams = useSearchParams();
+export const metadata: Metadata = {
+  title: 'Iniciar sesión',
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
-  const from = searchParams.get('from') || '/dashboard';
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
-
-      const json = await res.json();
-      setLoading(false);
-
-      if (!res.ok) {
-        setError(json.error || 'Error de login');
-        return;
-      }
-
-      router.push(from);
-    } catch (err) {
-      console.error(err);
-      setLoading(false);
-      setError('Error de conexión');
-    }
-  }
+export default function LoginPage({
+  searchParams,
+}: {
+  searchParams?: { from?: string };
+}) {
+  const from = searchParams?.from || '/dashboard';
 
   return (
     <main className="min-h-screen relative bg-slate-950 text-slate-100 flex items-center justify-center px-4">
@@ -93,46 +68,8 @@ export default function LoginPage() {
           confirmar turnos.
         </p>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div>
-            <label className="block text-xs mb-1 text-slate-200">
-              Usuario
-            </label>
-            <input
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-pink-400"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              autoComplete="username"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs mb-1 text-slate-200">
-              Contraseña
-            </label>
-            <input
-              type="password"
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-pink-400"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-            />
-          </div>
-
-          {error && (
-            <p className="text-xs text-red-400 mt-1">{error}</p>
-          )}
-
-          <button
-            disabled={loading}
-            className="w-full mt-2 rounded-full py-2 text-sm font-medium shadow-md shadow-black/40 disabled:opacity-60"
-            style={{ backgroundColor: PINK, color: '#020617' }}
-          >
-            {loading ? 'Ingresando...' : 'Entrar al panel'}
-          </button>
-        </form>
+        {/* Form client-side */}
+        <LoginForm from={from} />
 
         <p className="text-[11px] text-slate-500 mt-4">
           Si cerrás esta ventana, los turnos siguen guardados. Solo es
