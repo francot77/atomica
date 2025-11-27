@@ -35,28 +35,41 @@ export async function GET(req: NextRequest) {
     new Set(appointments.map((a: any) => String(a.serviceId)))
   );
 
-  const services = await Service.find({ _id: { $in: serviceIds } })
-    .select('_id name')
-    .lean();
+ const services = await Service.find({ _id: { $in: serviceIds } })
+  .select('_id name color')
+  .lean();
 
-  const serviceMap = new Map<string, string>();
-  services.forEach((s: any) => {
-    serviceMap.set(String(s._id), s.name);
+const serviceMap = new Map<
+  string,
+  { name: string; color: string }
+>();
+
+services.forEach((s: any) => {
+  serviceMap.set(String(s._id), {
+    name: s.name,
+    color: s.color || '#e87dad',
   });
+});
 
-  const result = appointments.map((a: any) => ({
+const result = appointments.map((a: any) => {
+  const svc = serviceMap.get(String(a.serviceId));
+  return {
     id: String(a._id),
     clientName: a.clientName,
     clientPhone: a.clientPhone,
     serviceId: String(a.serviceId),
-    serviceName: serviceMap.get(String(a.serviceId)) || 'Servicio',
+    serviceName: svc?.name || 'Servicio',
+    serviceColor: svc?.color || '#e87dad',
     date: a.date,
     startTime: a.startTime,
     endTime: a.endTime,
     status: a.status,
     notes: a.notes || '',
     createdAt: a.createdAt,
-  }));
+  };
+});
+
+
 
   return NextResponse.json({ appointments: result }, { status: 200 });
 }

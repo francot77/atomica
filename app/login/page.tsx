@@ -12,11 +12,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function LoginPage({
-  searchParams,
-}: {
-  searchParams?: { from?: string };
-}) {
+export default async function LoginPage(
+  props: {
+    searchParams?: Promise<{ from?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const from = searchParams?.from || '/dashboard';
 
   return (
