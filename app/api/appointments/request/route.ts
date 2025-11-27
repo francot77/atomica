@@ -6,7 +6,14 @@ import { createAppointmentRequest } from '@/lib/appointments';
 export async function POST(req: NextRequest) {
   await dbConnect();
   const body = await req.json();
+  const BOOKING_OPEN_FROM = '2026-01-01'; // hardcode, sin env
 
+  if (body.date < BOOKING_OPEN_FROM) {
+    return NextResponse.json(
+      { error: `Los turnos se toman a partir del ${BOOKING_OPEN_FROM}.` },
+      { status: 400 }
+    );
+  }
   try {
     const { appointment } = await createAppointmentRequest(body);
 

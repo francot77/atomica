@@ -244,6 +244,7 @@ export default function TurnosPage() {
             <input
               type="date"
               value={date}
+              min={'2026-01-01'}
               onChange={(e) => {
                 setDate(e.target.value);
                 setSlots([]);
@@ -368,10 +369,6 @@ export default function TurnosPage() {
             <p className="text-xs text-emerald-400">{message}</p>
           )}
         </section>
-
-        <p className="text-[11px] text-slate-500 text-center">
-          Te van a responder por WhatsApp para confirmar el turno 😊
-        </p>
       </div>
     </main>
   );

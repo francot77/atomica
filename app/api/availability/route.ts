@@ -63,7 +63,13 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const date = searchParams.get('date');
   const serviceId = searchParams.get('serviceId');
-
+  const BOOKING_OPEN_FROM = '2026-01-01'; // hardcode, sin env
+  if (date && date < BOOKING_OPEN_FROM) {
+    return NextResponse.json(
+      { error: `Los turnos se toman a partir del ${BOOKING_OPEN_FROM}.` },
+      { status: 400 }
+    );
+  }
   if (!date || !serviceId) {
     return NextResponse.json(
       { error: 'Faltan parámetros date o serviceId' },
