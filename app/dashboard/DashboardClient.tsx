@@ -6,6 +6,7 @@ import { PINK } from './types';
 import AppointmentsTab from './AppointmentsTab';
 import ServicesTab from './ServicesTab';
 import ScheduleTab from './ScheduleTab';
+import CalendarTab from './CalendarTab';
 
 async function logout() {
   await fetch('/api/auth/logout', { method: 'POST' });
@@ -14,7 +15,7 @@ async function logout() {
 
 export default function DashboardClient() {
   const [tab, setTab] = useState<
-    'appointments' | 'services' | 'schedule'
+    'appointments' | 'services' | 'schedule' | 'calendar'
   >('appointments');
 
   return (
@@ -42,39 +43,46 @@ export default function DashboardClient() {
         <div className="inline-flex rounded-full border border-slate-800 bg-slate-900/60 p-1 text-xs">
           <button
             onClick={() => setTab('appointments')}
-            className={`px-4 py-1.5 rounded-full ${
-              tab === 'appointments'
+            className={`px-4 py-1.5 rounded-full ${tab === 'appointments'
                 ? 'bg-slate-100 text-slate-900'
                 : 'text-slate-300'
-            }`}
+              }`}
           >
             Turnos
           </button>
           <button
             onClick={() => setTab('services')}
-            className={`px-4 py-1.5 rounded-full ${
-              tab === 'services'
+            className={`px-4 py-1.5 rounded-full ${tab === 'services'
                 ? 'bg-slate-100 text-slate-900'
                 : 'text-slate-300'
-            }`}
+              }`}
           >
             Servicios
           </button>
           <button
             onClick={() => setTab('schedule')}
-            className={`px-4 py-1.5 rounded-full ${
-              tab === 'schedule'
+            className={`px-4 py-1.5 rounded-full ${tab === 'schedule'
                 ? 'bg-slate-100 text-slate-900'
                 : 'text-slate-300'
-            }`}
+              }`}
           >
             Horarios
+          </button>
+          <button
+            onClick={() => setTab('calendar')}
+            className={`px-4 py-1.5 rounded-full ${tab === 'calendar'
+                ? 'bg-slate-100 text-slate-900'
+                : 'text-slate-300'
+              }`}
+          >
+            Calendario
           </button>
         </div>
 
         {tab === 'appointments' && <AppointmentsTab />}
         {tab === 'services' && <ServicesTab />}
         {tab === 'schedule' && <ScheduleTab />}
+        {tab === 'calendar' && <CalendarTab />}
       </div>
     </main>
   );

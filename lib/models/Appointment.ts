@@ -24,6 +24,7 @@ const AppointmentSchema = new Schema(
   },
   { timestamps: true }
 );
-
+AppointmentSchema.index({ date: 1, status: 1, startTime: 1 });
+AppointmentSchema.index({ clientPhone: 1 });
 export const Appointment =
   models.Appointment || model('Appointment', AppointmentSchema);
